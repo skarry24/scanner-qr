@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scanner Snow Day</title>
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 12px;
+    text-align: center;
+    background: #eee;
+  }
+  select, input, button {
+    font-size: 18px;
+    padding: 10px;
+    margin: 4px;
+  }
+  #reader {
+    width: 100%;
+    max-width: 400px;
+    margin: 10px auto;
+  }
+  #esito {
+    font-size: 22px;
+    font-weight: bold;
+    padding: 24px;
+    margin-top: 10px;
+    border-radius: 10px;
+    color: white;
+    background: #888;
+  }
+  .verde { background: #2e7d32 !important; }
+  .giallo {
+    background: #f9a825 !important;
+    color: black !important;
+  }
+  .rosso { background: #c62828 !important; }
+</style>
+</head>
+<body>
+
+<h2>Scanner Snow Day</h2>
+
+<div>
+  Pullman n.:
+  <input id="pullman" type="number" style="width:70px">
+
+  <select id="direzione">
+    <option>Andata</option>
+    <option>Ritorno</option>
+  </select>
+
+  <br>
+  PIN:
+  <input id="pin" type="password" style="width:90px">
+</div>
+
+<button onclick="avvia()">Avvia camera</button>
+
+<div id="reader"></div>
+<div id="esito">In attesa...</div>
+
+<p>Se la camera non va, scrivi il codice a mano:</p>
+
+<input id="manuale" placeholder="Codice (8 caratteri)">
+<button onclick="invia(document.getElementById('manuale').value)">Invia</button>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+const URL_APP = "https://script.google.com/macros/s/AKfycbyfXgYKqi9NrfXQ8Gi3LiKMyANwbQ-2m1anYNxUGqxq2uLoYJzwSoOMZna1tRzkzkCc/exec";
+
+let occupato = false;
+
+function avvia() {
+  const q = new Html5Qrcode("reader");
+
+  q.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    function(testo) {
+      if (occupato) return;
+      invia(testo);
+    }
+  ).catch(function(e) {
+    mostra("giallo", "Camera non disponibile: " + e);
+  });
+}
+
+function invia(id) {
+  const pullman = document.getElementById("pullman").value;
+  const pin = document.getElementById("pin").value;
+  const dir = document.getElementById("direzione").value;
+
+  if (!pullman) {
+    mostra("giallo", "Scrivi prima il numero del pullman");
+    return;
+  }
+
+  occupato = true;
+  mostra("", "Controllo...");
+
+  const url = URL_APP +
+    "?id=" + encodeURIComponent(id) +
+    "&pullman=" + encodeURIComponent(pullman) +
+    "&direzione=" + encodeURIComponent(dir) +
+    "&pin=" + encodeURIComponent(pin);
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(r) { mostra(r.esito, r.msg); })
+    .catch(function(e) {
+      mostra("rosso", "Errore di rete, riprova");
+    })
+    .finally(function() {
+      setTimeout(function() { occupato = false; }, 2000);
+    });
+}
+
+function mostra(classe, testo) {
+  const e = document.getElementById("esito");
+  e.className = classe;
+  e.textContent = testo;
+}
+</script>
+
+</body>
+</html>
